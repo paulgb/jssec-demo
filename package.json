@@ -8,6 +8,7 @@
   "dependencies": {
     "coffee-script": "*",
     "http-proxy": "*",
-    "native-dns": "*"
+    "native-dns": "*",
+    "tcp-proxy": "*"
   }
 }

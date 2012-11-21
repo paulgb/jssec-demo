@@ -2,10 +2,12 @@
 httpProxy = require 'http-proxy'
 fs = require 'fs'
 dns = require 'native-dns'
+net = require 'net'
 
 bug = fs.readFileSync 'bug.html'
 
 HTTP_PORT = 80
+HTTPS_PORT = 443
 DNS_PORT = 53
 DNS_TIMEOUT = 1000
 DNS_TTL = 60
@@ -45,6 +47,7 @@ server = httpProxy.createServer (req, res, proxy) ->
 
     res.oldWriteHead code, headers
 
+  req.headers['accept-encoding'] = 'plain'
   proxy.proxyRequest req, res,
     host: req.headers['host']
     port: HTTP_PORT
@@ -74,4 +77,18 @@ handleRequest = (req, res) ->
 dnsServer = dns.createServer()
 dnsServer.on 'request', handleRequest
 dnsServer.serve DNS_PORT
+
+# source: https://github.com/gonzalo123/nodejs.tcp.proxy/blob/master/proxy.js
+
+tcpProxy = net.createServer (socket) ->
+  upstream = new net.Socket()
+  upstream.connect(HTTPS_PORT, process.env.TAP_HOST)
+  
+  socket.on 'data', (data) ->
+    upstream.write data
+
+  upstream.on 'data', (data) ->
+    socket.write data
+
+tcpProxy.listen HTTPS_PORT
 
