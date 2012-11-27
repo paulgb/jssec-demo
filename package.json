@@ -3,7 +3,8 @@
   "version": "0.0.1",
   "description": "Demo of inserting a keylogger into HTTP requests through a comprimised DNS server",
   "scripts": {
-    "start": "authbind --deep coffee app.coffee"
+    "start": "coffee app.coffee",
+    "startauth": "authbind --deep coffee app.coffee"
   },
   "dependencies": {
     "coffee-script": "*",
