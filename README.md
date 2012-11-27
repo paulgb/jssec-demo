@@ -73,8 +73,8 @@ into a "secure" form.
 Avoiding the Exploit
 --------------------
 
-The only real way to avoid this class of exploit is to *only ask for sensitive
-information on pages that have been loaded over HTTPS*. Any other solution is
-a hack and while it may outsmart this general proof-of-concept exploit, it *will*
+The only real way to avoid this class of exploit is to **only ask for sensitive
+information on pages that have been loaded over HTTPS**. Any other solution is
+a hack and while it may outsmart this general proof-of-concept exploit, it **will**
 be vulnerable to attacks of the same class.
 
